@@ -1,0 +1,75 @@
+dimension,grp,n,late_pct
+Customer segment,Home Office,11266,57.7
+Customer segment,Consumer,32614,57.3
+Customer segment,Corporate,19017,57.2
+Department (items),Fitness,2374,58.0
+Department (items),Outdoors,9267,58.0
+Department (items),Technology,1396,57.7
+Department (items),Golf,31768,57.3
+Department (items),Footwear,13891,57.2
+Department (items),Apparel,46884,57.2
+Department (items),Fan Shop,64033,57.2
+Department (items),Discs Shop,1943,56.8
+Market,Pacific Asia,16853,57.7
+Market,USCA,8178,57.5
+Market,Europe,17763,57.4
+Market,LATAM,16414,56.9
+Market,Africa,3689,56.5
+Order region,Central Africa,533,60.0
+Order region,East Africa,589,59.1
+Order region,South of  USA ,1280,58.8
+Order region,West Asia,1935,58.5
+Order region,Western Europe,9563,58.4
+Order region,Southeast Asia,4173,58.0
+Order region,Eastern Europe,1246,58.0
+Order region,South Asia,3219,57.9
+Order region,US Center ,1852,57.8
+Order region,East of USA,2219,57.5
+Order region,Eastern Asia,3171,57.3
+Order region,Central America,9001,57.3
+Order region,West of USA ,2536,57.2
+Order region,North Africa,1013,57.1
+Order region,Oceania,4175,57.1
+Order region,South America,4738,56.9
+Order region,Northern Europe,3564,56.0
+Order region,Southern Europe,3390,55.9
+Order region,Caribbean,2675,55.6
+Order region,West Africa,1174,53.3
+Order weekday,Thursday,8997,57.6
+Order weekday,Sunday,8959,57.5
+Order weekday,Monday,8931,57.5
+Order weekday,Wednesday,8975,57.5
+Order weekday,Friday,9020,57.1
+Order weekday,Saturday,9012,57.1
+Order weekday,Tuesday,9003,56.9
+Payment type,DEBIT,25340,57.5
+Payment type,PAYMENT,15086,57.4
+Payment type,TRANSFER,15222,57.2
+Payment type,CASH,7249,56.7
+Product category (items),Cameras ,562,61.2
+Product category (items),Accessories,1697,59.8
+Product category (items),Trade-In,926,58.5
+Product category (items),Golf Gloves,1029,58.5
+Product category (items),Electronics,3024,58.5
+Product category (items),Girls' Apparel,1137,58.4
+Product category (items),Women's Clothing,631,58.2
+Product category (items),Golf Shoes,502,58.0
+Product category (items),Shop By Sport,10515,57.6
+Product category (items),Baseball & Softball,607,57.5
+Product category (items),Toys,507,57.4
+Product category (items),Cleats,23514,57.4
+Product category (items),Golf Balls,1403,57.4
+Product category (items),Fishing,16595,57.3
+Product category (items),Indoor/Outdoor Games,18470,57.2
+Product category (items),Water Sports,14880,57.2
+Product category (items),Women's Apparel,20116,57.0
+Product category (items),Men's Footwear,21263,57.0
+Product category (items),Cardio Equipment,11948,57.0
+Product category (items),Camping & Hiking,13157,56.9
+Product category (items),Video Games,804,56.6
+Product category (items),Hockey,588,56.0
+Product category (items),Children's Clothing,622,55.9
+Shipping mode,First Class,9602,100.0
+Shipping mode,Second Class,12256,80.0
+Shipping mode,Same Day,3407,48.4
+Shipping mode,Standard Class,37632,39.8

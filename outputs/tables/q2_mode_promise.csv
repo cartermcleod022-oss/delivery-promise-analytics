@@ -1,0 +1,5 @@
+shipping_mode,orders,pct_of_orders,promised_days,avg_actual_days,avg_promise_gap,otd_pct,severe_late_pct
+First Class,9602,15.3,1,2.0,1.0,0.0,0.0
+Second Class,12256,19.5,2,4.0,2.0,20.0,60.2
+Same Day,3407,5.4,0,0.48,0.48,51.6,0.0
+Standard Class,37632,59.8,4,3.99,-0.01,60.2,20.0

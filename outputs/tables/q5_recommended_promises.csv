@@ -1,0 +1,5 @@
+shipping_mode,orders,promised_days,otd_pct,promise_for_target
+Same Day,3407,0,51.6,1
+First Class,9602,1,0.0,2
+Second Class,12256,2,20.0,6
+Standard Class,37632,4,60.2,6

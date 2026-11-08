@@ -1,0 +1,5 @@
+rank,fix_id,fix_name,reach_orders_per_month,affected_otd_before_pct,affected_otd_after_pct,extra_on_time_orders_per_month,overall_otd_today_pct,overall_otd_after_pct,promise_longer_by_days,confidence,effort_weeks,reasoning,rice_score
+1,A,First Class: promise 2 days,260.0,0.0,100.0,260.0,42.7,58.0,1.0,high,1,Changes one number in the promise rules; First Class always ships in exactly 2 days.,260.0
+2,C,Standard: show a 2-6 day window,1017.0,60.2,100.0,405.0,42.7,66.5,2.0,medium,6,"New delivery-window logic plus UI in checkout, emails and tracking; OTD gain is certain, but the effect on conversion is unknown.",54.0
+3,D,Rename Same Day to Next Day (1 day),92.0,51.6,100.0,45.0,42.7,45.3,1.0,medium,2,Rename plus a promise change; renaming may reduce demand for the premium tier.,18.0
+4,B,Merge Second Class into Standard,331.0,20.0,60.0,132.0,42.7,50.5,2.0,low,4,"Checkout, pricing and finance sign-off; no shipping-fee data, so the revenue effect is unknown.",16.5
