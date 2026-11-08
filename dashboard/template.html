@@ -103,7 +103,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 .pill.ok { color: var(--good-text); }
 
 /* Grid rows */
-.row-2 { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 16px; }
+.row-2 { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; }
 @media (max-width: 1100px) { .row-2 { grid-template-columns: minmax(0, 1fr); } }
 
 /* Legend chips (toggle series) */
@@ -137,7 +137,7 @@ th { text-align: left; font-size: 0.72rem; font-weight: 600; color: var(--muted)
 td { padding: 8px 6px; border-bottom: 1px solid var(--grid); vertical-align: middle; }
 td.num, th.num { text-align: right; font-family: var(--font-data); }
 .mode-name { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; white-space: nowrap; }
-.bar-cell { display: grid; grid-template-columns: 3.2rem 1fr; align-items: center; gap: 6px; }
+.bar-cell { display: grid; grid-template-columns: 3rem minmax(4rem, 1fr); align-items: center; gap: 6px; min-width: 7.5rem; }
 .bar-track { height: 8px; background: var(--grid); border-radius: 4px; overflow: hidden; }
 .bar-fill { height: 100%; background: var(--good); border-radius: 0 4px 4px 0; }
 .table-scroll { overflow-x: auto; }
