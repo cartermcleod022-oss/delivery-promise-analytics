@@ -1,0 +1,650 @@
+<title>Delivery Promise Monitor</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: summary first (KPIs), then trend + mode scorecard, then the interactive
+   promise simulator (each mode's real delivery spread on a 0-6 day ruler), then region check. */
+:root {
+  --bg: #f4f6f8;
+  --surface: #fcfcfd;
+  --ink: #0f1419;
+  --ink-2: #4a5361;
+  --muted: #7b8494;
+  --grid: #e3e6ea;
+  --axis: #c5cbd3;
+  --border: rgba(15, 20, 25, 0.10);
+  --accent: #2a78d6;
+  --accent-wash: rgba(42, 120, 214, 0.10);
+  --m0: #1baf7a; /* Same Day */
+  --m1: #2a78d6; /* First Class */
+  --m2: #eb6834; /* Second Class */
+  --m3: #eda100; /* Standard Class */
+  --good: #0ca30c;
+  --crit: #d03b3b;
+  --good-text: #006300;
+  --crit-text: #b42f2f;
+  --font-ui: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1114; --surface: #171b20; --ink: #eef1f4; --ink-2: #c0c7d1; --muted: #8a93a0;
+    --grid: #262c33; --axis: #3a424c; --border: rgba(255, 255, 255, 0.10);
+    --accent: #3987e5; --accent-wash: rgba(57, 135, 229, 0.16);
+    --m0: #199e70; --m1: #3987e5; --m2: #d95926; --m3: #c98500;
+    --good-text: #0ca30c; --crit-text: #e66767;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1114; --surface: #171b20; --ink: #eef1f4; --ink-2: #c0c7d1; --muted: #8a93a0;
+  --grid: #262c33; --axis: #3a424c; --border: rgba(255, 255, 255, 0.10);
+  --accent: #3987e5; --accent-wash: rgba(57, 135, 229, 0.16);
+  --m0: #199e70; --m1: #3987e5; --m2: #d95926; --m3: #c98500;
+  --good-text: #0ca30c; --crit-text: #e66767;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--font-ui); font-size: 14px; line-height: 1.45;
+}
+.wrap {
+  max-width: 1240px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 40px;
+  display: grid; gap: 16px;
+}
+h1, h2, h3 { margin: 0; text-wrap: balance; }
+h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 1rem; font-weight: 600; }
+.sub { color: var(--ink-2); margin: 2px 0 0; }
+.note { color: var(--muted); font-size: 0.8rem; margin: 2px 0 0; }
+.panel {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 16px; min-width: 0;
+}
+.panel-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px 16px; margin-bottom: 12px; }
+
+/* Header and filters */
+header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px 24px; }
+.eyebrow { font-family: var(--font-data); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.filters label { display: grid; gap: 2px; font-size: 0.72rem; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+select, button {
+  font: inherit; font-size: 0.85rem; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--axis); border-radius: 6px; padding: 6px 10px;
+}
+select { min-width: 9.5rem; }
+button { cursor: pointer; }
+button:hover:not(:disabled) { background: var(--accent-wash); }
+button:disabled { opacity: 0.45; cursor: default; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* KPI tiles */
+.kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 1000px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .kpis > :first-child { grid-column: 1 / -1; } }
+@media (max-width: 480px) { .kpis { grid-template-columns: minmax(0, 1fr); } }
+.kpi { display: grid; gap: 4px; align-content: start; }
+.kpi .label { font-size: 0.78rem; color: var(--ink-2); }
+.kpi .value { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+.kpi .value small { font-size: 1rem; font-weight: 600; color: var(--ink-2); }
+.kpi .ctx { font-size: 0.78rem; color: var(--muted); }
+.pill {
+  display: inline-flex; align-items: center; gap: 4px; width: fit-content;
+  font-size: 0.72rem; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+  border: 1px solid currentColor;
+}
+.pill.bad { color: var(--crit-text); }
+.pill.ok { color: var(--good-text); }
+
+/* Grid rows */
+.row-2 { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 1100px) { .row-2 { grid-template-columns: minmax(0, 1fr); } }
+
+/* Legend chips (toggle series) */
+.legend { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; padding: 3px 9px;
+  border-radius: 999px; border: 1px solid var(--axis); background: var(--surface); color: var(--ink);
+}
+.chip[aria-pressed="false"] { color: var(--muted); }
+.chip[aria-pressed="false"] .sw { opacity: 0.25; }
+.sw { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.sw.line { height: 3px; border-radius: 2px; }
+
+/* Charts */
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { font-family: var(--font-data); font-size: 11px; fill: var(--muted); font-variant-numeric: tabular-nums; }
+.tip {
+  position: absolute; pointer-events: none; z-index: 5; min-width: 150px;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--border);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12); border-radius: 8px; padding: 8px 10px; font-size: 0.78rem;
+}
+.tip b { display: block; margin-bottom: 4px; }
+.tip .r { display: flex; align-items: center; gap: 6px; justify-content: space-between; }
+.tip .r span:first-child { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
+.tip .r span:last-child { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+
+/* Mode scorecard */
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th { text-align: left; font-size: 0.72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; padding: 0 6px 6px; border-bottom: 1px solid var(--grid); }
+td { padding: 8px 6px; border-bottom: 1px solid var(--grid); vertical-align: middle; }
+td.num, th.num { text-align: right; font-family: var(--font-data); }
+.mode-name { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; white-space: nowrap; }
+.bar-cell { display: grid; grid-template-columns: 3.2rem 1fr; align-items: center; gap: 6px; }
+.bar-track { height: 8px; background: var(--grid); border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; background: var(--good); border-radius: 0 4px 4px 0; }
+.table-scroll { overflow-x: auto; }
+
+/* Simulator */
+.sim-top { display: flex; flex-wrap: wrap; gap: 16px 32px; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.sim-result { display: flex; flex-wrap: wrap; gap: 8px 28px; align-items: baseline; }
+.big { font-size: 2.4rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1; }
+.delta { font-family: var(--font-data); font-weight: 500; font-size: 0.95rem; }
+.delta.up { color: var(--good-text); }
+.delta.down { color: var(--crit-text); }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.presets button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-wash); font-weight: 600; }
+.toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; cursor: pointer; }
+.modes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 1100px) { .modes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .modes { grid-template-columns: minmax(0, 1fr); } }
+.mode-card { border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: grid; gap: 8px; min-width: 0; }
+.mode-card .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.mode-card .share { font-size: 0.75rem; color: var(--muted); font-family: var(--font-data); }
+.stepper { display: flex; align-items: center; gap: 8px; }
+.stepper button { width: 30px; height: 30px; padding: 0; font-size: 1rem; line-height: 1; }
+.stepper output { font-weight: 600; min-width: 7.5rem; }
+.mode-card .otd { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--ink-2); }
+.mode-card .otd b { font-family: var(--font-data); color: var(--ink); }
+.merged-tag { font-size: 0.72rem; color: var(--accent); font-weight: 600; }
+.sim-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.78rem; color: var(--ink-2); margin-top: 12px; }
+.sim-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.day-col { cursor: pointer; }
+
+footer { color: var(--muted); font-size: 0.8rem; display: grid; gap: 4px; }
+footer p { margin: 0; max-width: 90ch; }
+@media (prefers-reduced-motion: no-preference) {
+  .bar-fill { transition: width 0.25s ease; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">DataCo supply chain · shipped orders, Jan 2015 – Jan 2018</div>
+      <h1>Delivery Promise Monitor</h1>
+      <p class="sub">Are we delivering when we said we would, and what promise would make that true?</p>
+    </div>
+    <div class="filters" role="group" aria-label="Filters">
+      <label for="f-year">Year<select id="f-year"></select></label>
+      <label for="f-market">Market<select id="f-market"></select></label>
+      <label for="f-segment">Customer segment<select id="f-segment"></select></label>
+      <button id="f-reset" type="button">Reset filters</button>
+    </div>
+  </header>
+
+  <section class="kpis" aria-label="Key metrics">
+    <div class="panel kpi">
+      <span class="label">On-time delivery</span>
+      <span class="value" id="k-otd"></span>
+      <span class="pill" id="k-otd-pill"></span>
+    </div>
+    <div class="panel kpi">
+      <span class="label">Severely late (2+ days)</span>
+      <span class="value" id="k-severe"></span>
+      <span class="ctx">share of shipped orders</span>
+    </div>
+    <div class="panel kpi">
+      <span class="label">Average lateness, when late</span>
+      <span class="value" id="k-late-days"></span>
+      <span class="ctx">days past the promised date</span>
+    </div>
+    <div class="panel kpi">
+      <span class="label">Promised vs. actual</span>
+      <span class="value" id="k-gap"></span>
+      <span class="ctx" id="k-gap-ctx"></span>
+    </div>
+    <div class="panel kpi">
+      <span class="label">Shipped orders</span>
+      <span class="value" id="k-orders"></span>
+      <span class="ctx" id="k-orders-ctx"></span>
+    </div>
+  </section>
+
+  <div class="row-2">
+    <section class="panel" aria-labelledby="t-trend">
+      <div class="panel-head">
+        <div>
+          <h2 id="t-trend">On-time delivery by month</h2>
+          <p class="note">Flat for three years. Toggle a mode to show or hide it.</p>
+        </div>
+        <div class="legend" id="trend-legend"></div>
+      </div>
+      <div class="chart" id="trend"></div>
+    </section>
+    <section class="panel" aria-labelledby="t-modes">
+      <div class="panel-head">
+        <div>
+          <h2 id="t-modes">Scorecard by shipping mode</h2>
+          <p class="note">Same speed, different promises.</p>
+        </div>
+      </div>
+      <div class="table-scroll"><table id="mode-table"></table></div>
+    </section>
+  </div>
+
+  <section class="panel" aria-labelledby="t-sim">
+    <div class="panel-head">
+      <div>
+        <h2 id="t-sim">Promise simulator</h2>
+        <p class="note">Bars show how many days orders really took. Click a day, or use − / +, to move the promise. Every past order is replayed against it.</p>
+      </div>
+    </div>
+    <div class="sim-top">
+      <div class="sim-result" aria-live="polite">
+        <div>
+          <div class="eyebrow">Projected on-time delivery</div>
+          <span class="big" id="s-otd"></span> <span class="delta" id="s-delta"></span>
+        </div>
+        <div>
+          <div class="eyebrow">Average promise</div>
+          <span class="big" id="s-promise" style="font-size:1.6rem"></span>
+          <span class="note" id="s-promise-ctx"></span>
+        </div>
+      </div>
+      <div class="presets" role="group" aria-label="Presets">
+        <button type="button" data-preset="today">Today</button>
+        <button type="button" data-preset="v1">Recommended v1</button>
+        <button type="button" data-preset="all">All fixes</button>
+        <label class="toggle" for="s-merge"><input type="checkbox" id="s-merge"> Merge Second Class into Standard</label>
+      </div>
+    </div>
+    <div class="modes" id="modes"></div>
+    <div class="sim-legend">
+      <span><span class="sw" style="background:var(--good)"></span>On time or early (arrived by the promise)</span>
+      <span><span class="sw" style="background:var(--crit)"></span>Late (arrived after the promise)</span>
+      <span><span class="sw line" style="background:var(--ink);height:12px;width:2px"></span>Promise</span>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="t-region">
+    <div class="panel-head">
+      <div>
+        <h2 id="t-region">Late rate by destination region</h2>
+        <p class="note">Every region sits close to the average. Lateness comes from the promise, not the place. Regions with fewer than 30 orders in the current filter are hidden.</p>
+      </div>
+    </div>
+    <div class="chart" id="regions"></div>
+  </section>
+
+  <footer>
+    <p>Source: DataCo Smart Supply Chain dataset (Kaggle), cleaned and aggregated with SQL (DuckDB). On-time = actual shipping days ≤ promised days; canceled orders excluded. The dataset is likely synthetic, so treat the figures as a method demonstration.</p>
+    <p>Recommended v1 = First Class promise 2 days, Standard shown as a 2–6 day window (committed day 6), Same Day renamed Next Day (1 day). All fixes adds merging Second Class into Standard.</p>
+  </footer>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+const DATA = /*__DATA__*/null;
+const MODE_VARS = ["--m0", "--m1", "--m2", "--m3"];
+const TARGET = 90;
+const PRESETS = {
+  today: { promise: DATA.promise.slice(), merge: false },
+  v1:    { promise: [1, 2, 2, 6], merge: false },
+  all:   { promise: [1, 2, 2, 6], merge: true },
+};
+const state = {
+  year: "all", market: "all", segment: "all",
+  shown: [true, true, true, true, true],     // trend series: 4 modes + all
+  promise: DATA.promise.slice(), merge: false,
+};
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const pct = (x, d = 1) => (100 * x).toFixed(d) + "%";
+const fmtInt = (n) => n.toLocaleString("en-US");
+const NS = "http://www.w3.org/2000/svg";
+const el = (tag, attrs = {}, parent) => {
+  const e = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
+  if (parent) parent.appendChild(e);
+  return e;
+};
+const monthLabel = (m) => {
+  const [y, mo] = m.split("-");
+  return new Date(+y, +mo - 1, 1).toLocaleString("en-US", { month: "short", year: "numeric" });
+};
+
+/* ---------- Filters ---------- */
+const years = [...new Set(DATA.months.map((m) => m.slice(0, 4)))];
+function fillSelect(id, values, allLabel) {
+  const s = document.getElementById(id);
+  s.innerHTML = `<option value="all">${allLabel}</option>` +
+    values.map((v) => `<option value="${v}">${v}</option>`).join("");
+}
+fillSelect("f-year", years, "All years");
+fillSelect("f-market", DATA.markets, "All markets");
+fillSelect("f-segment", DATA.segments, "All segments");
+
+function filteredRows() {
+  const seg = state.segment === "all" ? -1 : DATA.segments.indexOf(state.segment);
+  return DATA.rows.filter((r) =>
+    (state.year === "all" || DATA.months[r[0]].startsWith(state.year)) &&
+    (state.market === "all" || DATA.regionMarket[r[2]] === state.market) &&
+    (seg === -1 || r[3] === seg));
+}
+// Effective promise per mode (merge makes Second Class use Standard's promise).
+const effPromise = (promise, merge) => promise.map((p, i) => (merge && i === 2 ? promise[3] : p));
+
+/* ---------- Metrics ---------- */
+function summarize(rows, promise) {
+  let n = 0, onTime = 0, severe = 0, lateDays = 0, late = 0, actual = 0, prom = 0;
+  for (const [, mode, , , d, c] of rows) {
+    const p = promise[mode];
+    n += c; actual += d * c; prom += p * c;
+    if (d <= p) onTime += c;
+    else { late += c; lateDays += (d - p) * c; if (d - p >= 2) severe += c; }
+  }
+  return { n, otd: n ? onTime / n : 0, severe: n ? severe / n : 0,
+           lateDays: late ? lateDays / late : 0, actual: n ? actual / n : 0, promise: n ? prom / n : 0 };
+}
+
+/* ---------- KPIs ---------- */
+function renderKpis(rows) {
+  const s = summarize(rows, DATA.promise);
+  document.getElementById("k-otd").textContent = pct(s.otd);
+  const pill = document.getElementById("k-otd-pill");
+  const ok = 100 * s.otd >= TARGET;
+  pill.className = "pill " + (ok ? "ok" : "bad");
+  pill.textContent = ok ? `✓ Meets ${TARGET}% target` : `✕ ${(TARGET - 100 * s.otd).toFixed(1)} pts below ${TARGET}% target`;
+  document.getElementById("k-severe").textContent = pct(s.severe);
+  document.getElementById("k-late-days").innerHTML = `${s.lateDays.toFixed(2)} <small>days</small>`;
+  const gap = s.actual - s.promise;
+  document.getElementById("k-gap").innerHTML = `${gap >= 0 ? "+" : ""}${gap.toFixed(2)} <small>days</small>`;
+  document.getElementById("k-gap-ctx").textContent = `avg actual ${s.actual.toFixed(1)} vs. promised ${s.promise.toFixed(1)} days`;
+  document.getElementById("k-orders").textContent = fmtInt(s.n);
+  const months = new Set(rows.map((r) => r[0])).size;
+  document.getElementById("k-orders-ctx").textContent = `${months} months · ~${fmtInt(Math.round(s.n / Math.max(months, 1)))} per month`;
+}
+
+/* ---------- Trend chart ---------- */
+const tip = document.getElementById("tip");
+function showTip(container, html, x, y) {
+  tip.innerHTML = html; tip.hidden = false;
+  const box = container.getBoundingClientRect();
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  let left = box.left + window.scrollX + x + 14;
+  if (left + tw > window.scrollX + document.documentElement.clientWidth - 8) left = box.left + window.scrollX + x - tw - 14;
+  tip.style.left = Math.max(8, left) + "px";
+  tip.style.top = box.top + window.scrollY + Math.max(0, y - th / 2) + "px";
+}
+const hideTip = () => { tip.hidden = true; };
+
+function renderTrendLegend() {
+  const names = [...DATA.modes, "All modes"];
+  const colors = [...MODE_VARS.map((v) => `var(${v})`), "var(--ink)"];
+  const lg = document.getElementById("trend-legend");
+  lg.innerHTML = names.map((n, i) =>
+    `<button type="button" class="chip" aria-pressed="${state.shown[i]}" data-i="${i}">
+       <span class="sw line" style="background:${colors[i]}"></span>${n}</button>`).join("");
+  lg.querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => {
+    state.shown[+b.dataset.i] = !state.shown[+b.dataset.i];
+    renderTrendLegend(); renderTrend(filteredRows());
+  }));
+}
+
+function renderTrend(rows) {
+  const box = document.getElementById("trend");
+  box.innerHTML = "";
+  const W = Math.max(box.clientWidth, 300), H = 280, m = { t: 12, r: 12, b: 26, l: 40 };
+  const months = [...new Set(rows.map((r) => r[0]))].sort((a, b) => a - b);
+  if (!months.length) { box.textContent = "No orders match these filters."; return; }
+  // series[i][monthPos] = on-time share; i = 0..3 modes, 4 = all
+  const acc = months.map(() => Array.from({ length: 5 }, () => [0, 0]));
+  const pos = new Map(months.map((mi, i) => [mi, i]));
+  for (const [mi, mode, , , d, c] of rows) {
+    const a = acc[pos.get(mi)], ot = d <= DATA.promise[mode] ? c : 0;
+    a[mode][0] += ot; a[mode][1] += c; a[4][0] += ot; a[4][1] += c;
+  }
+  const series = [0, 1, 2, 3, 4].map((i) => acc.map((a) => (a[i][1] ? a[i][0] / a[i][1] : null)));
+  const counts = acc.map((a) => a.map((x) => x[1]));
+  const x = (i) => m.l + (months.length === 1 ? (W - m.l - m.r) / 2 : (i * (W - m.l - m.r)) / (months.length - 1));
+  const y = (v) => m.t + (1 - v) * (H - m.t - m.b);
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "On-time delivery by month" }, box);
+  for (const v of [0, 0.25, 0.5, 0.75, 1]) {
+    el("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: css("--grid"), "stroke-width": 1 }, svg);
+    el("text", { x: m.l - 6, y: y(v) + 4, "text-anchor": "end" }, svg).textContent = 100 * v + "%";
+  }
+  el("line", { x1: m.l, x2: W - m.r, y1: y(TARGET / 100), y2: y(TARGET / 100), stroke: css("--ink-2"), "stroke-dasharray": "4 4", "stroke-width": 1 }, svg);
+  el("text", { x: W - m.r, y: y(TARGET / 100) - 5, "text-anchor": "end" }, svg).textContent = `Target ${TARGET}%`;
+  const step = Math.ceil(months.length / Math.max(2, Math.floor((W - m.l - m.r) / 70)));
+  months.forEach((mi, i) => {
+    if (i % step === 0) el("text", { x: x(i), y: H - 6, "text-anchor": "middle" }, svg).textContent = monthLabel(DATA.months[mi]).replace(" ", " ’").replace(/’\d\d(\d\d)/, "’$1");
+  });
+  const colors = [...MODE_VARS.map(css), css("--ink")];
+  [0, 1, 2, 3, 4].forEach((i) => {
+    if (!state.shown[i]) return;
+    let d = "";
+    series[i].forEach((v, k) => { if (v !== null) d += `${d && series[i][k - 1] !== null ? "L" : "M"}${x(k).toFixed(1)},${y(v).toFixed(1)}`; });
+    el("path", { d, fill: "none", stroke: colors[i], "stroke-width": i === 4 ? 2.5 : 2, "stroke-linejoin": "round" }, svg);
+  });
+  // Crosshair + tooltip
+  const cross = el("line", { y1: m.t, y2: H - m.b, stroke: css("--axis"), "stroke-width": 1, visibility: "hidden" }, svg);
+  const dots = [0, 1, 2, 3, 4].map((i) => el("circle", { r: 4, fill: colors[i], stroke: css("--surface"), "stroke-width": 2, visibility: "hidden" }, svg));
+  const hit = el("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: "transparent" }, svg);
+  const move = (ev) => {
+    const r = svg.getBoundingClientRect(), px = ((ev.clientX - r.left) * W) / r.width;
+    const k = Math.max(0, Math.min(months.length - 1, Math.round(((px - m.l) / (W - m.l - m.r)) * (months.length - 1))));
+    cross.setAttribute("x1", x(k)); cross.setAttribute("x2", x(k)); cross.setAttribute("visibility", "visible");
+    const names = [...DATA.modes, "All modes"];
+    let html = `<b>${monthLabel(DATA.months[months[k]])}</b>`;
+    [4, 0, 1, 2, 3].forEach((i) => {
+      const v = series[i][k];
+      const show = state.shown[i] && v !== null;
+      dots[i].setAttribute("visibility", show ? "visible" : "hidden");
+      if (show) {
+        dots[i].setAttribute("cx", x(k)); dots[i].setAttribute("cy", y(v));
+        html += `<div class="r"><span><span class="sw line" style="background:${colors[i]}"></span>${names[i]}</span><span>${pct(v)} · ${fmtInt(counts[k][i])}</span></div>`;
+      }
+    });
+    showTip(box, html, (x(k) * r.width) / W, (m.t * r.height) / H + 40);
+  };
+  hit.addEventListener("pointermove", move);
+  hit.addEventListener("pointerleave", () => { hideTip(); cross.setAttribute("visibility", "hidden"); dots.forEach((d) => d.setAttribute("visibility", "hidden")); });
+}
+
+/* ---------- Mode scorecard ---------- */
+function renderModeTable(rows) {
+  const per = DATA.modes.map(() => [0, 0, 0]); // orders, on time, actual days sum
+  let total = 0;
+  for (const [, mode, , , d, c] of rows) {
+    per[mode][0] += c; per[mode][2] += d * c; total += c;
+    if (d <= DATA.promise[mode]) per[mode][1] += c;
+  }
+  const t = document.getElementById("mode-table");
+  t.innerHTML = `<thead><tr><th>Mode</th><th class="num">Orders</th><th class="num">Promise</th><th class="num">Actual</th><th>On time</th></tr></thead><tbody>` +
+    DATA.modes.map((name, i) => {
+      const [n, ot, ds] = per[i];
+      const otd = n ? ot / n : 0;
+      return `<tr>
+        <td><span class="mode-name"><span class="sw" style="background:var(${MODE_VARS[i]})"></span>${name}</span></td>
+        <td class="num">${total ? pct(n / total, 0) : "–"}</td>
+        <td class="num">${DATA.promise[i]}d</td>
+        <td class="num">${n ? (ds / n).toFixed(1) + "d" : "–"}</td>
+        <td><div class="bar-cell"><span class="num" style="font-family:var(--font-data)">${n ? pct(otd, 0) : "–"}</span><div class="bar-track"><div class="bar-fill" style="width:${100 * otd}%"></div></div></div></td>
+      </tr>`;
+    }).join("") + "</tbody>";
+}
+
+/* ---------- Simulator ---------- */
+function buildModeCards() {
+  document.getElementById("modes").innerHTML = DATA.modes.map((name, i) => `
+    <div class="mode-card" id="card-${i}">
+      <div class="head">
+        <span class="mode-name"><span class="sw" style="background:var(${MODE_VARS[i]})"></span>${name}</span>
+        <span class="share" id="share-${i}"></span>
+      </div>
+      <div class="chart" id="hist-${i}"></div>
+      <div class="stepper">
+        <button type="button" id="minus-${i}" aria-label="Shorten ${name} promise by one day">−</button>
+        <output id="prom-${i}" for="minus-${i} plus-${i}"></output>
+        <button type="button" id="plus-${i}" aria-label="Lengthen ${name} promise by one day">+</button>
+        <span class="merged-tag" id="merged-${i}" hidden>Merged into Standard</span>
+      </div>
+      <div class="otd"><span>Today <b id="otd-now-${i}"></b></span><span>With this promise <b id="otd-new-${i}"></b></span></div>
+    </div>`).join("");
+  DATA.modes.forEach((_, i) => {
+    document.getElementById(`minus-${i}`).addEventListener("click", () => setPromise(i, state.promise[i] - 1));
+    document.getElementById(`plus-${i}`).addEventListener("click", () => setPromise(i, state.promise[i] + 1));
+  });
+}
+function setPromise(i, p) {
+  state.promise[i] = Math.max(0, Math.min(6, p));
+  renderSim(filteredRows());
+}
+
+function renderHist(i, dist, n, promise, locked) {
+  const box = document.getElementById(`hist-${i}`);
+  box.innerHTML = "";
+  const W = Math.max(box.clientWidth, 220), H = 130, m = { t: 14, r: 4, b: 20, l: 4 };
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img",
+    "aria-label": `${DATA.modes[i]}: actual shipping days, promise ${promise} days` }, box);
+  const cw = (W - m.l - m.r) / 7, maxShare = Math.max(...dist.map((c) => (n ? c / n : 0)), 0.01);
+  const y = (s) => m.t + (1 - s / maxShare) * (H - m.t - m.b);
+  el("line", { x1: m.l, x2: W - m.r, y1: H - m.b, y2: H - m.b, stroke: css("--axis") }, svg);
+  for (let d = 0; d <= 6; d++) {
+    const share = n ? dist[d] / n : 0, cx = m.l + d * cw;
+    const g = el("g", { class: locked ? "" : "day-col" }, svg);
+    el("rect", { x: cx, y: m.t, width: cw, height: H - m.t - m.b, fill: "transparent" }, g);
+    if (share > 0) {
+      const top = y(share), bw = cw * 0.72, bx = cx + (cw - bw) / 2;
+      const h = H - m.b - top;
+      el("path", { d: `M${bx},${H - m.b} V${top + Math.min(4, h)} q0,-4 4,-4 H${bx + bw - 4} q4,0 4,4 V${H - m.b} Z`,
+        fill: d <= promise ? css("--good") : css("--crit") }, g);
+      el("text", { x: cx + cw / 2, y: top - 4, "text-anchor": "middle" }, g).textContent = pct(share, 0);
+    }
+    el("text", { x: cx + cw / 2, y: H - 5, "text-anchor": "middle" }, g).textContent = d + "d";
+    if (!locked) {
+      g.addEventListener("click", () => setPromise(i, d));
+      g.addEventListener("pointermove", (ev) => {
+        const r = svg.getBoundingClientRect();
+        showTip(box, `<b>${DATA.modes[i]} · ${d} day${d === 1 ? "" : "s"}</b>${fmtInt(dist[d])} orders (${pct(share)})<br>Click to promise ${d} day${d === 1 ? "" : "s"}`,
+          ev.clientX - r.left, ev.clientY - r.top);
+      });
+      g.addEventListener("pointerleave", hideTip);
+    }
+  }
+  const px = m.l + (promise + 1) * cw;
+  el("line", { x1: px, x2: px, y1: m.t - 6, y2: H - m.b + 2, stroke: css("--ink"), "stroke-width": 2 }, svg);
+}
+
+function renderSim(rows) {
+  const eff = effPromise(state.promise, state.merge);
+  const now = summarize(rows, DATA.promise), sim = summarize(rows, eff);
+  document.getElementById("s-otd").textContent = pct(sim.otd);
+  const dd = 100 * (sim.otd - now.otd);
+  const delta = document.getElementById("s-delta");
+  delta.className = "delta " + (dd > 0.05 ? "up" : dd < -0.05 ? "down" : "");
+  delta.textContent = Math.abs(dd) < 0.05 ? "same as today" : `${dd > 0 ? "▲ +" : "▼ "}${dd.toFixed(1)} pts vs. today`;
+  document.getElementById("s-promise").textContent = sim.promise.toFixed(1) + " days";
+  document.getElementById("s-promise-ctx").textContent = `today ${now.promise.toFixed(1)} · actual stays ${now.actual.toFixed(1)}`;
+
+  const total = rows.reduce((a, r) => a + r[5], 0);
+  DATA.modes.forEach((_, i) => {
+    const dist = [0, 0, 0, 0, 0, 0, 0];
+    let n = 0;
+    for (const r of rows) if (r[1] === i) { dist[r[4]] += r[5]; n += r[5]; }
+    const locked = state.merge && i === 2;
+    renderHist(i, dist, n, eff[i], locked);
+    document.getElementById(`share-${i}`).textContent = total ? `${pct(n / total, 0)} of orders` : "";
+    document.getElementById(`prom-${i}`).textContent = `Promise: ${eff[i]} day${eff[i] === 1 ? "" : "s"}`;
+    document.getElementById(`minus-${i}`).disabled = locked || state.promise[i] <= 0;
+    document.getElementById(`plus-${i}`).disabled = locked || state.promise[i] >= 6;
+    document.getElementById(`merged-${i}`).hidden = !locked;
+    const ot = (p) => (n ? dist.slice(0, p + 1).reduce((a, b) => a + b, 0) / n : 0);
+    document.getElementById(`otd-now-${i}`).textContent = n ? pct(ot(DATA.promise[i]), 0) : "–";
+    document.getElementById(`otd-new-${i}`).textContent = n ? pct(ot(eff[i]), 0) : "–";
+  });
+  document.getElementById("s-merge").checked = state.merge;
+  document.querySelectorAll("[data-preset]").forEach((b) => {
+    const p = PRESETS[b.dataset.preset];
+    b.setAttribute("aria-pressed", String(p.merge === state.merge && p.promise.every((v, i) => v === state.promise[i])));
+  });
+}
+
+/* ---------- Regions ---------- */
+function renderRegions(rows) {
+  const box = document.getElementById("regions");
+  box.innerHTML = "";
+  const agg = DATA.regions.map(() => [0, 0]);
+  let lateAll = 0, nAll = 0;
+  for (const [, mode, reg, , d, c] of rows) {
+    const late = d > DATA.promise[mode] ? c : 0;
+    agg[reg][0] += late; agg[reg][1] += c; lateAll += late; nAll += c;
+  }
+  const items = DATA.regions.map((name, i) => ({ name, late: agg[i][0], n: agg[i][1] }))
+    .filter((d) => d.n >= 30).map((d) => ({ ...d, rate: d.late / d.n })).sort((a, b) => b.rate - a.rate);
+  if (!items.length) { box.textContent = "Not enough orders for these filters."; return; }
+  const W = Math.max(box.clientWidth, 300), rowH = 22;
+  const labelW = Math.min(150, W * 0.38), m = { t: 18, r: 46, b: 22, l: labelW };
+  const H = m.t + items.length * rowH + m.b;
+  const x = (v) => m.l + v * (W - m.l - m.r);
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Late rate by destination region" }, box);
+  for (const v of [0, 0.25, 0.5, 0.75, 1]) {
+    el("line", { x1: x(v), x2: x(v), y1: m.t, y2: H - m.b, stroke: css("--grid") }, svg);
+    el("text", { x: x(v), y: H - 6, "text-anchor": "middle" }, svg).textContent = 100 * v + "%";
+  }
+  const avg = lateAll / nAll;
+  items.forEach((d, k) => {
+    const yy = m.t + k * rowH, bh = 12, by = yy + (rowH - bh) / 2;
+    const g = el("g", {}, svg);
+    el("rect", { x: 0, y: yy, width: W, height: rowH, fill: "transparent" }, g);
+    el("text", { x: m.l - 8, y: yy + rowH / 2 + 4, "text-anchor": "end", style: `fill:${css("--ink-2")};font-family:var(--font-ui)` }, g)
+      .textContent = d.name.replace(/\s+/g, " ");
+    const w = x(d.rate) - m.l;
+    el("path", { d: `M${m.l},${by} H${m.l + w - 4} q4,0 4,4 V${by + bh - 4} q0,4 -4,4 H${m.l} Z`, fill: css("--accent") }, g);
+    el("text", { x: m.l + w + 6, y: yy + rowH / 2 + 4 }, g).textContent = pct(d.rate, 0);
+    g.addEventListener("pointermove", (ev) => {
+      const r = svg.getBoundingClientRect();
+      showTip(box, `<b>${d.name.replace(/\s+/g, " ")}</b><div class="r"><span>Late rate</span><span>${pct(d.rate)}</span></div><div class="r"><span>Orders</span><span>${fmtInt(d.n)}</span></div><div class="r"><span>vs. average</span><span>${(100 * (d.rate - avg) >= 0 ? "+" : "") + (100 * (d.rate - avg)).toFixed(1)} pts</span></div>`,
+        ev.clientX - r.left, ev.clientY - r.top);
+    });
+    g.addEventListener("pointerleave", hideTip);
+  });
+  el("line", { x1: x(avg), x2: x(avg), y1: m.t - 6, y2: H - m.b, stroke: css("--ink"), "stroke-width": 1.5, "stroke-dasharray": "3 3" }, svg);
+  el("text", { x: x(avg), y: m.t - 8, "text-anchor": "middle", style: `fill:${css("--ink")}` }, svg).textContent = `Average ${pct(avg, 0)}`;
+}
+
+/* ---------- Wiring ---------- */
+function renderAll() {
+  const rows = filteredRows();
+  renderKpis(rows); renderTrend(rows); renderModeTable(rows); renderSim(rows); renderRegions(rows);
+}
+for (const [id, key] of [["f-year", "year"], ["f-market", "market"], ["f-segment", "segment"]]) {
+  document.getElementById(id).addEventListener("change", (e) => { state[key] = e.target.value; renderAll(); });
+}
+document.getElementById("f-reset").addEventListener("click", () => {
+  state.year = state.market = state.segment = "all";
+  ["f-year", "f-market", "f-segment"].forEach((id) => { document.getElementById(id).value = "all"; });
+  renderAll();
+});
+document.querySelectorAll("[data-preset]").forEach((b) => b.addEventListener("click", () => {
+  const p = PRESETS[b.dataset.preset];
+  state.promise = p.promise.slice(); state.merge = p.merge;
+  renderSim(filteredRows());
+}));
+document.getElementById("s-merge").addEventListener("change", (e) => { state.merge = e.target.checked; renderSim(filteredRows()); });
+
+buildModeCards();
+renderTrendLegend();
+renderAll();
+let resizeTimer;
+window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(renderAll, 150); });
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderAll);
+new MutationObserver(renderAll).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+</script>
