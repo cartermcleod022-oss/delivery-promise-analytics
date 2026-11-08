@@ -11,7 +11,7 @@ despite promising half the time.
 
 ## Interactive dashboard
 
-Open [`dashboard/index.html`](dashboard/index.html) in a browser (no install needed).
+**[Open the live dashboard](https://cartermcleod022-oss.github.io/delivery-promise-analytics/dashboard/)** (no install needed), or open `dashboard/index.html` locally.
 It has KPI tiles, the monthly trend, a scorecard by mode, and a **promise simulator**: click a
 day on any mode's real delivery-time distribution to move its promise, and every
 historical order is replayed against it. Filters for year, market and segment update everything.
@@ -61,7 +61,7 @@ a 5% margin (10–17 weeks). Full PRD: [docs/phase5_prd.md](docs/phase5_prd.md).
 | 3. Analyze | SQL (DuckDB) per question, Python charts, significance test | [phase3_findings.md](docs/phase3_findings.md) | ✅ |
 | 4. Prioritize | Score 4 fixes with RICE; model their combined impact and the cost of longer promises | [phase4_prioritization.md](docs/phase4_prioritization.md) | ✅ |
 | 5. Design | PRD for the Reliable Delivery Window: window rule from data, metrics and guardrails, A/B test sized to real volume | [phase5_prd.md](docs/phase5_prd.md) | ✅ |
-| 6. Present | Interactive dashboard with a promise simulator; Tableau Public rebuild guide | [dashboard/index.html](dashboard/index.html) · [tableau_guide.md](docs/tableau_guide.md) | ✅ |
+| 6. Present | Interactive dashboard with a promise simulator; Tableau Public rebuild guide | [live dashboard](https://cartermcleod022-oss.github.io/delivery-promise-analytics/dashboard/) · [tableau_guide.md](docs/tableau_guide.md) | ✅ |
 
 ### Analytical decisions worth noting
 
